@@ -1,0 +1,29 @@
+{% extends 'layout.html' %}
+
+{% block title %}Data Pendapatan{% endblock %}
+
+{% block content %}
+<h2>Data Pendapatan</h2>
+<div>
+    <table>
+        <thead>
+            <tr>
+                <th>Nomor</th>
+                <th>Periode</th>
+                <th>Pendapatan</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in info_table %}
+            <tr>
+                <td>{{row[0]}}</td>
+                <td>{{row[1]}}</td>
+                <td>{{row[2]}}</td>
+                <td><a href="{{ url_for('ubahdata') }} " class="smallbutton">Edit</a><a href="{{ url_for('hapusdata') }} " class="smallbutton">Hapus</a></td>
+                </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
