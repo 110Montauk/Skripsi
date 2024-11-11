@@ -1,0 +1,22 @@
+{% include "header.html" %}
+
+<link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+
+{% block body %}
+
+<div class="container text-center">
+    <nav class="navtop">
+		<div>
+            <a href="{{ url_for('Login') }}" class="btn btn-primary">Masuk Sebagai Admin</a>
+            <br>
+            <br>
+            <a href="{{ url_for('Home') }}" class="btn btn-primary">Masuk sebagai Pengguna</a>
+		</div>
+	</nav>
+</div>
+
+{% endblock %}
+
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+
+<script type="text/javascript" src="{{url_for('static', filename = 'js/bootstrap.min.js')}}"></script>

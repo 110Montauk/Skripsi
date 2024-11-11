@@ -1,0 +1,21 @@
+<html>
+<head>
+<title>Adobe Forecast</title>
+<link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+<link rel="shortcut icon" href="{{url_for('static', filename = 'teacher.png' )}}">
+</head>
+
+<body>
+<div class="container text-center">
+    <div class="jumbotron">
+        <h2>Adobe Forecast</h2>
+        <nav class="navtop">
+			<div>
+                <a href="{{ url_for('Home') }}"><i class="fas fa-home"></i>Home</a>
+                <a href="{{ url_for('Profile') }}"><i class="fas fa-home"></i>Profile</a>
+				<a href="{{ url_for('Logout') }}"><i class="fas fa-sign-out-alt"></i>Logout</a>
+			</div>
+		</nav>
+    </div>
+</div>
+</body>

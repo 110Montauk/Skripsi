@@ -1,6 +1,6 @@
 #import flask mysqldb library
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
 from flask_mysqldb import MySQL
 import MySQLdb.cursors, re
 import mysql.connector
@@ -40,7 +40,6 @@ def Index():
 #login
 @app.route('/login/', methods=['GET', 'POST'])
 def Login():
-    msg = ''
     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
         username = request.form['username']
         password = request.form['password']
@@ -53,11 +52,11 @@ def Login():
             session['username'] = account['username']
             return redirect(url_for('Home'))
         else:
-            msg = 'Incorrect username/password!'
-    return render_template('login.html', msg=msg)
+            flash("Username/Password salah!")
+    return render_template('login.html')
 
 #logout
-@app.route('/login/logout')
+@app.route('/logout')
 def Logout():
     session.pop('loggedin', None)
     session.pop('id', None)
@@ -67,7 +66,6 @@ def Logout():
 #register
 @app.route('/register', methods=['GET', 'POST'])
 def Register():
-    msg = ''
     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
         username = request.form['username']
         password = request.form['password']
@@ -75,26 +73,44 @@ def Register():
         cursor.execute('SELECT * FROM tabel_admin WHERE username = %s', (username,))
         account = cursor.fetchone()
         if account:
-            msg = 'Account already exists!'
+            flash("Akun admin sudah ada!")
         elif not re.match(r'[A-Za-z0-9]+', username):
-            msg = 'Username must contain only characters and numbers!'
+            flash("Username hanya boleh terdiri dari huruf dan angka!")
         elif not username or not password:
-            msg = 'Please fill out the form!'
+            flash("Mohon isi data di bawah")
         else:
             cursor.execute('INSERT INTO tabel_admin VALUES (NULL, %s, %s)', (username, password,))
             mysql.connection.commit()
-            msg = 'You have successfully registered!'
+            flash("Anda telah terdaftarkan")
     elif request.method == 'POST':
-        msg = 'Please fill out the form!'
-    return render_template('login.html', msg=msg)
+        flash("Mohon isi data di bawah")
+    return render_template('register.html')
 
 #homepage
 @app.route('/home')
 def Home():
     if 'loggedin' in session:
         return render_template('home.html')
-    msg =  'Please login before continuing with this function'
+    flash('Please login before continuing with this function')
     return redirect(url_for('Login'))
+
+@app.route('/profile')
+def Profile():
+    # Check if the user is logged in
+    if 'loggedin' in session:
+        # We need all the account info for the user so we can display it on the profile page
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('SELECT * FROM tabel_admin WHERE id_admin = %s', (session['id'],))
+        account = cursor.fetchone()
+        # Show the profile page with account info
+        return render_template('profile.html', account=account)
+    # User is not logged in redirect to login page
+    flash('Please login before continuing with this function')
+    return redirect(url_for('Login'))
+
+@app.route('/updateprofile')
+def UpdateProfile():
+    return render_template('updateprofile.html')
 
 #view data
 @app.route('/view')
@@ -103,7 +119,7 @@ def View():
     cur.execute("SELECT  * FROM tabel_pendapatan")
     data = cur.fetchall()
     cur.close()
-    return render_template('view.html', students=data )
+    return render_template('view.html', pendapatan=data )
 
 #insert data, must login
 @app.route('/insert', methods = ['POST'])
@@ -117,6 +133,7 @@ def insert():
             cur.execute("INSERT INTO tabel_pendapatan (periode, pendapatan) VALUES (%s, %s)", (periode, pendapatan))
             mysql.connection.commit()
             return redirect(url_for('View'))
+    flash("Fungsi ini hanya tersedia untuk admin, silahkan login dahulu.")
     return redirect(url_for('Login'))
 
 #delete data, must login
@@ -128,6 +145,7 @@ def delete(id_data):
         cur.execute("DELETE FROM tabel_pendapatan WHERE id_pendapatan=%s", (id_data,))
         mysql.connection.commit()
         return redirect(url_for('View'))
+    flash("Fungsi ini hanya tersedia untuk admin, silahkan login dahulu.")
     return redirect(url_for('Login'))
 
 #update data, must login
@@ -147,9 +165,14 @@ def update():
             flash("Data Updated Successfully")
             mysql.connection.commit()
         return redirect(url_for('View'))
+    flash("Fungsi ini hanya tersedia untuk admin, silahkan login dahulu.")
     return redirect(url_for('Login'))
 
-@app.route('/forecast')
+@app.route('/showforecast')
+def ShowForecast():
+    return render_template('forecast.html')
+
+@app.route('/forecast.png')
 def Forecast():
     #import data
     query = 'select * from tabel_pendapatan'
@@ -189,7 +212,7 @@ def Forecast():
     df = pd.concat([df, df_additive], ignore_index=True)
 
     #plotting, additive
-    plt.figure(figsize=(30,15))
+    plt.figure(figsize=(12,6))
     plt.title(f'Peramalan pendapatan Adobe Inc. menggunakan Metode Additive, MAPE = {MAPE_additive}')
     plt.margins(x=0.01, y=0.1)
     plt.grid(True)
@@ -207,7 +230,7 @@ def Forecast():
     plt.savefig(img, format='png')
     img.seek(0)
     plt.close()
-    return send_file(img, mimetype='image/png')
+    return Response(img.getvalue(), mimetype='image/png')
 
 if __name__ == "__main__":
     app.run(debug=True)
