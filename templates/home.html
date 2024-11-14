@@ -5,7 +5,12 @@
 {% block body %}
 
 <div class="container text-center">
-    <a href="{{ url_for('View') }}" class="btn btn-primary">Lihat Data Penjualan</a>
+    <div class="jumbotron">
+        <a href="{{ url_for('View') }}" class="btn btn-primary" style="width: 160px;">Lihat Data Penjualan</a>
+        <br>
+        <br>
+        <a href="{{ url_for('ShowForecast') }} " class="btn btn-primary" style="width: 160px;">Lakukan Peramalan</a>
+    </div>
 </div>
 
 {% endblock %}
