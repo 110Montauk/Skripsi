@@ -6,6 +6,9 @@
 
 <div class="container text-center">
     <img src="{{ url_for('Forecast') }}" alt="Plot Image">
+    <br><br>
+    <h3>Model Summary:</h3>
+    {{ summary_html|safe }}
 </div>
 <br><br><br><br>
 
