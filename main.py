@@ -32,10 +32,6 @@ app.config['MYSQL_DB'] = 'adobe_database'
 
 mysql = MySQL(app)
 
-#index
-@app.route('/')
-def Index():
-    return render_template('index.html')
 
 #login
 @app.route('/login/', methods=['GET', 'POST'])
@@ -50,6 +46,7 @@ def Login():
             session['loggedin'] = True
             session['id'] = account['id_admin']
             session['username'] = account['username']
+            flash('Anda berhasil masuk!')
             return redirect(url_for('Home'))
         else:
             flash("Username/Password salah!")
@@ -88,11 +85,8 @@ def Register():
 
 #homepage
 @app.route('/home')
-def Home():
-    if 'loggedin' in session:
-        return render_template('home.html')
-    flash('Please login before continuing with this function')
-    return redirect(url_for('Login'))
+def Home():    
+    return render_template('home.html')
 
 @app.route('/profile')
 def Profile():
@@ -105,12 +99,38 @@ def Profile():
         # Show the profile page with account info
         return render_template('profile.html', account=account)
     # User is not logged in redirect to login page
-    flash('Please login before continuing with this function')
+    flash("Fungsi ini hanya tersedia untuk admin, silahkan login dahulu.")
     return redirect(url_for('Login'))
 
-@app.route('/updateprofile')
+@app.route('/updateprofile', methods=['POST','GET'])
 def UpdateProfile():
-    return render_template('updateprofile.html')
+    if 'loggedin' in session:
+        if request.method == 'POST':
+            username = session['username']
+            old_password = request.form['old_password']
+            new_password = request.form['new_password']
+            confirm_new_password = request.form['confirm_new_password']
+
+            if new_password != confirm_new_password:
+                flash("Password baru dan konfirmasi password tidak sama!", "error")
+                return redirect(url_for('UpdateProfile'))
+            
+            cur = mysql.connection.cursor()
+            cur.execute('SELECT password FROM tabel_admin WHERE username=%s and password=%s', (username, old_password))
+            user=cur.fetchone()
+            if user:
+                cur.execute("""
+                    UPDATE tabel_admin
+                    SET password=%s
+                    WHERE username=%s
+                    """, (new_password, username))
+                mysql.connection.commit()
+            else:
+                flash("Password lama tidak sesuai!")
+                return redirect(url_for('UpdateProfile'))
+            flash('Password berhasil diubah!')
+        return render_template('updateprofile.html')
+    return render_template('login.html')
 
 #view data
 @app.route('/view')
@@ -195,11 +215,13 @@ def Forecast():
     model_additive = sm.tsa.ExponentialSmoothing(df['pendapatan'], trend='add', seasonal='add', seasonal_periods=4)
     tes_model_additive = model_additive.fit()
     print(tes_model_additive.summary())
+    summary_html = tes_model_additive.summary().as_html()
+
     forecast_additive = tes_model_additive.forecast(steps=20)
 
     #MAPE
     MAPE_additive = mean_absolute_percentage_error(df.pendapatan, forecast_additive)
-    print(MAPE_additive)
+
 
     #add forecasted years to dataframe
     additive = {'quarter_str': ['2024Q1', '2024Q2', '2024Q3', '2024Q4',
