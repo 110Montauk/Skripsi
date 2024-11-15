@@ -1,6 +1,6 @@
 #import flask mysqldb library
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response, render_template_string
 from flask_mysqldb import MySQL
 import MySQLdb.cursors, re
 import mysql.connector
@@ -8,10 +8,8 @@ import mysql.connector
 #import forecast library
 import pandas as pd
 from matplotlib import pyplot as plt
-import numpy as np
 import statsmodels.api as sm
 from sklearn.metrics import mean_absolute_percentage_error
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from io import BytesIO
 
 #initiate app and database
@@ -34,7 +32,7 @@ mysql = MySQL(app)
 
 
 #login
-@app.route('/login/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET', 'POST'])
 def Login():
     if request.method == 'POST' and 'username' in request.form and 'password' in request.form:
         username = request.form['username']
@@ -146,12 +144,17 @@ def View():
 def insert():
     if 'loggedin' in session:
         if request.method == "POST":
-            flash("Data Inserted Successfully")
             periode = request.form['periode']
             pendapatan = request.form['pendapatan']
             cur = mysql.connection.cursor()
-            cur.execute("INSERT INTO tabel_pendapatan (periode, pendapatan) VALUES (%s, %s)", (periode, pendapatan))
-            mysql.connection.commit()
+            cur.execute('SELECT COUNT(*) FROM tabel_pendapatan')
+            count = cur.fetchone()[0]
+            if count < 20:
+                cur.execute("INSERT INTO tabel_pendapatan (periode, pendapatan) VALUES (%s, %s)", (periode, pendapatan))
+                mysql.connection.commit()
+                flash("Data Inserted Successfully")
+            else:
+                flash("Cannot insert data: maximum amount of query reached.")
             return redirect(url_for('View'))
     flash("Fungsi ini hanya tersedia untuk admin, silahkan login dahulu.")
     return redirect(url_for('Login'))
@@ -164,6 +167,7 @@ def delete(id_data):
         cur = mysql.connection.cursor()
         cur.execute("DELETE FROM tabel_pendapatan WHERE id_pendapatan=%s", (id_data,))
         mysql.connection.commit()
+        cur.close()
         return redirect(url_for('View'))
     flash("Fungsi ini hanya tersedia untuk admin, silahkan login dahulu.")
     return redirect(url_for('Login'))
@@ -188,51 +192,50 @@ def update():
     flash("Fungsi ini hanya tersedia untuk admin, silahkan login dahulu.")
     return redirect(url_for('Login'))
 
-@app.route('/showforecast')
-def ShowForecast():
-    return render_template('forecast.html')
+#import data
+query = 'select * from tabel_pendapatan'
+df = pd.read_sql(query, con = mydb)
+df['periode']= pd.to_datetime(df['periode'])
 
-@app.route('/forecast.png')
-def Forecast():
-    #import data
-    query = 'select * from tabel_pendapatan'
-    df = pd.read_sql(query, con = mydb)
-    df['periode']= pd.to_datetime(df['periode'])
-    
-    #plot original data
-    df['quarter'] = df['periode'].dt.to_period('Q')
-    df = df.drop(columns=['periode'])
-    df['quarter_str'] = df['quarter'].astype(str)
-    df = df.drop(columns=['quarter'])
-    print(df)
-    df.plot('quarter_str', 'pendapatan', title='Pendapatan Adobe per Tahun (dalam Miliar USD)', marker='o', xlabel='periode', ylabel='pendapatan', grid=True)
+#plot original data
+df['quarter'] = df['periode'].dt.to_period('Q')
+df = df.drop(columns=['periode'])
+df['quarter_str'] = df['quarter'].astype(str)
+df = df.drop(columns=['quarter'])
+print(df)
+df.plot('quarter_str', 'pendapatan', title='Pendapatan Adobe per Tahun (dalam Miliar USD)', marker='o', xlabel='periode', ylabel='pendapatan', grid=True)
 
-    #train and test data
-    train = df.iloc[:16]
-    test = df.iloc[16:]
+#train and test data
+train = df.iloc[:16]
+test = df.iloc[16:]
 
-    #forecasting
-    model_additive = sm.tsa.ExponentialSmoothing(df['pendapatan'], trend='add', seasonal='add', seasonal_periods=4)
-    tes_model_additive = model_additive.fit()
-    print(tes_model_additive.summary())
-    summary_html = tes_model_additive.summary().as_html()
+#forecasting
+model_additive = sm.tsa.ExponentialSmoothing(df['pendapatan'], trend='add', seasonal='add', seasonal_periods=4)
+tes_model_additive = model_additive.fit()
 
-    forecast_additive = tes_model_additive.forecast(steps=20)
+forecast_additive = tes_model_additive.forecast(steps=20)
 
-    #MAPE
-    MAPE_additive = mean_absolute_percentage_error(df.pendapatan, forecast_additive)
+#MAPE
+MAPE_additive = mean_absolute_percentage_error(df.pendapatan, forecast_additive)
 
 
-    #add forecasted years to dataframe
-    additive = {'quarter_str': ['2024Q1', '2024Q2', '2024Q3', '2024Q4',
+#add forecasted years to dataframe
+additive = {'quarter_str': ['2024Q1', '2024Q2', '2024Q3', '2024Q4',
                                 '2025Q1', '2025Q2', '2025Q3', '2025Q4',
                                 '2026Q1', '2026Q2', '2026Q3', '2026Q4',
                                 '2027Q1', '2027Q2', '2027Q3', '2027Q4',
                                 '2028Q1', '2028Q2', '2028Q3', '2028Q4', ],
                     'Peramalan': forecast_additive}
-    df_additive = pd.DataFrame(additive)
-    df = pd.concat([df, df_additive], ignore_index=True)
+df_additive = pd.DataFrame(additive)
+df = pd.concat([df, df_additive], ignore_index=True)
 
+@app.route('/showforecast')
+def ShowForecast():
+    summary_html = tes_model_additive.summary().as_html()
+    return render_template('forecast.html', summary_html=summary_html)
+
+@app.route('/forecast.png')
+def Forecast():
     #plotting, additive
     plt.figure(figsize=(12,6))
     plt.title(f'Peramalan pendapatan Adobe Inc. menggunakan Metode Additive, MAPE = {MAPE_additive}')
@@ -251,7 +254,6 @@ def Forecast():
     img = BytesIO()
     plt.savefig(img, format='png')
     img.seek(0)
-    plt.close()
     return Response(img.getvalue(), mimetype='image/png')
 
 if __name__ == "__main__":
