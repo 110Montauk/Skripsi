@@ -116,7 +116,10 @@ def home():
 @app.route('/view')
 def view():
     data = tabel_pendapatan.query.all()
-    return render_template('view.html', data=data)
+    if current_user.is_authenticated:
+        return render_template('view.html', data=data, header=session['username'])
+    else:
+        return render_template('view.html', data=data, header='Guest')
 
 @app.route('/add', methods=['POST'])
 @login_required
@@ -143,8 +146,13 @@ def add():
 @login_required
 def update(id_pendapatan):
     entry = tabel_pendapatan.query.get(id_pendapatan)
-    entry.pendapatan = request.form.get('pendapatan', type=float)
+    pendapatan = request.form['pendapatan']
+    entry.pendapatan = pendapatan
+    if not re.match(r"\d*(\.\d+)?$", pendapatan):
+        flash("Pendapatan harus terdiri dari angka!")
+        return redirect(url_for('view'))
     db.session.commit()
+    flash('Pendapatan berhasil diubah!')
     return redirect(url_for('view'))
 
 @app.route('/delete/<int:id_pendapatan>', methods=['GET'])
@@ -167,8 +175,10 @@ def forecast():
     df.set_index('id_pendapatan', inplace=True)
 
     # Apply Exponential Smoothing for forecasting
-    model = sm.tsa.ExponentialSmoothing(df['pendapatan'], trend='add', seasonal='add', seasonal_periods=4).fit()
-    forecast = model.forecast(steps=20)  # Forecast the next 20 steps
+    model = sm.tsa.ExponentialSmoothing(df['pendapatan'], trend='add', seasonal='add', seasonal_periods=4)
+    fit=model.fit()
+    print(fit.summary())
+    forecast = fit.forecast(steps=20)  # Forecast the next 20 steps
     
     #MAPE
     MAPE = mean_absolute_percentage_error(df.pendapatan, forecast)
@@ -189,11 +199,23 @@ def forecast():
     plt.close()
     return Response(img, mimetype='image/png')
 
-@app.route('/show_forecast')
-def show_forecast():
-    return render_template('forecast.html')
+@app.route('/forecast_summary')
+def forecast_summary():
+    data = tabel_pendapatan.query.all()
 
+    # Convert data to a Pandas DataFrame
+    df = pd.DataFrame([(d.id_pendapatan, d.periode, d.pendapatan) for d in data], columns=['id_pendapatan', 'periode', 'pendapatan'])
+    df.set_index('id_pendapatan', inplace=True)
 
+    # Apply Exponential Smoothing for forecasting
+    model = sm.tsa.ExponentialSmoothing(df['pendapatan'], trend='add', seasonal='add', seasonal_periods=4)
+    fit=model.fit()
+    fit.summary()
+    summary_html = fit.summary().as_html()
+    if current_user.is_authenticated:
+        return render_template('forecast_summary.html', summary=summary_html, header = session['username'])
+    else:
+        return render_template('forecast_summary.html', summary=summary_html, header = 'Guest')
 
 if __name__ == '__main__':
     app.run(debug=True)
