@@ -1,0 +1,19 @@
+{% include "header.html" %}
+
+<link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+
+{% block body %}
+
+<div class="container text-center">
+    <img src="{{ url_for('forecast') }}" alt="Plot Image">
+    <div>{{ summary }}</div>
+    <a href="/view" class="btn btn-primary">Kembali ke Menu Kelola Data</a>
+</div>
+<br><br><br><br>
+
+{% endblock %}
+
+
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+
+<script type="text/javascript" src="{{url_for('static', filename = 'js/bootstrap.min.js')}}"></script>
