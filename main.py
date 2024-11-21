@@ -27,7 +27,7 @@ login_manager.login_view = 'login'
 class tabel_pendapatan(db.Model):
     __tablename__ = 'tabel_pendapatan'
     id_pendapatan = db.Column(db.Integer, primary_key=True, autoincrement = True)
-    periode = db.Column(db.Text(6), nullable = False)
+    periode = db.Column(db.Date, nullable = False)
     pendapatan = db.Column(db.Float, nullable = False)
 
 class tabel_admin(db.Model, UserMixin):
@@ -157,12 +157,8 @@ def add():
     data = tabel_pendapatan.query.all()
     periode = request.form['periode']
     pendapatan = request.form['pendapatan']
-    #input format must be 20xxQx, else = error
-    if not re.match(r"^20\d{2}Q[1-4]$", periode):
-        flash('Format periode salah! Silahkan gunakan format 20xxQx (contoh: 2019Q1)', 'danger')
-        return redirect(url_for('view'))
     #input format must be numbers, else = error
-    elif not re.match(r"\d*(\.\d+)?$", pendapatan):
+    if not re.match(r"\d*(\.\d+)?$", pendapatan):
         flash("Pendapatan harus terdiri dari angka!")
         return redirect(url_for('view'))
     else:
@@ -207,26 +203,28 @@ def forecast():
     data = tabel_pendapatan.query.order_by(tabel_pendapatan.periode.asc()).all()
 
     # Convert data to a Pandas DataFrame
-    df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Periode', 'Pendapatan'])
-    df = df.sort_values('Periode')
-    df.index += 1
+    df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Quarter', 'Pendapatan'])
+    df['Quarter']= pd.to_datetime(df['Quarter'])
+    df = df.sort_values('Quarter')
+    df['Quarter'] = df['Quarter'].dt.to_period('Q')
+    df['Quarter'] = df['Quarter'].astype(str)
 
     # Apply Exponential Smoothing for forecasting
     model = sm.tsa.ExponentialSmoothing(df['Pendapatan'], trend='add', seasonal='add', seasonal_periods=4)
     fit=model.fit()
-    forecast = fit.forecast(steps=20)  # Forecast the next 20 steps
+    forecast = fit.forecast(20)  # Forecast the next 20 steps
     
     #MAPE
     MAPE = mean_absolute_percentage_error(df.Pendapatan, forecast)
 
     # Plot the original data and forecast
-    plt.figure(figsize=(10, 5))
-    plt.grid(True)
+    plt.figure(figsize=(10, 9))
     plt.plot(df.index, df['Pendapatan'], label='Penjualan', marker='o')
     plt.plot(range(df.index[-1] + 1, df.index[-1] + 21), forecast, label='Peramalan', marker='o', linestyle='--')
-    plt.title(f'Peramalan pendapatan Adobe Inc. menggunakan Metode Additive, MAPE = {MAPE}')
-    plt.xlabel('Periode')
+    plt.title(f'Peramalan pendapatan Adobe Inc. menggunakan Metode Additive, MAPE = {MAPE:.2%}')
+    plt.xlabel('Quarter')
     plt.ylabel('Pendapatan')
+    plt.grid(True)
     plt.legend()
     
     #retrieve the plot to display
@@ -247,8 +245,10 @@ def forecast_summary():
     
     else:
         # Convert data to a Pandas DataFrame
-        df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Periode', 'Pendapatan'])
-        df = df.sort_values('Periode')
+        df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Quarter', 'Pendapatan'])
+        df['Quarter']= pd.to_datetime(df['Quarter'])
+        df = df.sort_values('Quarter')
+        df['Quarter'] = df['Quarter'].dt.to_period('Q')
 
         # Apply Exponential Smoothing for forecasting
         model = sm.tsa.ExponentialSmoothing(df['Pendapatan'], trend='add', seasonal='add', seasonal_periods=4)
