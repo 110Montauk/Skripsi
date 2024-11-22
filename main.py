@@ -59,6 +59,9 @@ def register():
         if not re.match(r'[A-Za-z0-9]+', username):
             flash("Username hanya boleh terdiri dari huruf dan angka!")
             return redirect(url_for('register'))
+        if not re.match(r'^.{8,}$', password):
+            flash("Password harus terdiri dari minimal 8 karakter!")
+            return redirect(url_for('register'))
         else:
             new_user = tabel_admin(username=username, password=password)
             db.session.add(new_user)
@@ -115,6 +118,10 @@ def change_password():
                 flash("Password baru dan konfirmasi password tidak sama!", "error")
                 return redirect(url_for('change_password'))
         
+        if not re.match(r'^.{8,}$', new_password):
+            flash("Password harus terdiri dari minimal 8 karakter!")
+            return redirect(url_for('change_password'))
+        
         user = tabel_admin.query.filter_by(username=username, password=current_password).first()        
         user.password = new_password
         db.session.commit()
@@ -129,6 +136,9 @@ def change_username():
     username = session['username']
     if request.method == 'POST':
         new_username = request.form['new_username']
+        if not re.match(r'[A-Za-z0-9]+', new_username):
+            flash("Username hanya boleh terdiri dari huruf dan angka!")
+            return redirect(url_for('change_username'))
         user = tabel_admin.query.filter_by(username=username).first()        
         user.username = new_username
         db.session.commit()
@@ -169,7 +179,7 @@ def add():
             db.session.commit()
             flash('Data berhasil ditambahkan!')
         else:
-            flash("Jumlah data sudah mencapai maksimal!")
+            flash("Jumlah data sudah mencapai maksimal! Silahkan menghapus data penjualan yang ada jika diperlukan.")
     return redirect(url_for('view'))
 
 #update data
