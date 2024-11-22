@@ -1,0 +1,32 @@
+{% include "header.html" %}
+
+<link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+
+{% block body %}
+<div class="container">
+    <a href="{{ url_for('home') }} " class="btn btn-primary">Kembali ke Menu Utama</a>
+    <div class="container text-center">
+    <h2>Halaman Profil</h2>
+        <div>
+            <p>Data akun:</p>
+            <table class="table table-striped">
+                <tr>
+                    <td>Username:</td>
+                    <td>{{ username }}</td>
+                    <td><a href="{{ url_for('change_username') }} " class="btn btn-primary">Ubah Username</a></td>
+                </tr>
+                <tr>
+                    <td>Password:</td>
+                    <td>*******</td>
+                    <td><a href="{{ url_for('change_password') }} " class="btn btn-primary">Ubah Password</a></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+
+<script type="text/javascript" src="{{url_for('static', filename = 'js/bootstrap.min.js')}}"></script>
