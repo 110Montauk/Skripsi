@@ -8,7 +8,7 @@ import statsmodels.api as sm
 import pandas as pd
 from sklearn.metrics import mean_absolute_percentage_error
 from io import BytesIO
-from sqlalchemy import text
+import numpy as np
 
 #initiate app
 app = Flask(__name__)
@@ -227,13 +227,27 @@ def forecast():
     #MAPE
     MAPE = mean_absolute_percentage_error(df.Pendapatan, forecast)
 
+    last_quarter = pd.Period(df['Quarter'].max(), freq='Q')
+    next_quarters = pd.period_range(start=last_quarter + 1, periods=20, freq='Q').astype(str)
+
+    additive = {'Quarter': next_quarters, 'Peramalan': forecast}
+
+    df_additive = pd.DataFrame(additive)
+
+    df = pd.concat([df, df_additive], ignore_index=True)
+
     # Plot the original data and forecast
-    plt.figure(figsize=(10, 9))
-    plt.plot(df.index, df['Pendapatan'], label='Penjualan', marker='o')
-    plt.plot(range(df.index[-1] + 1, df.index[-1] + 21), forecast, label='Peramalan', marker='o', linestyle='--')
+    plt.figure(figsize=(12, 9))
+    plt.margins(x=0.01, y=0.1)
+    x = df['Quarter']
+    y1 = df['Pendapatan']
+    y2 = df['Peramalan']
+    plt.plot(x, y1, label='Penjualan', marker='o')
+    plt.plot(x, y2, label='Peramalan', marker='o', linestyle='--')
     plt.title(f'Peramalan pendapatan Adobe Inc. menggunakan Metode Additive, MAPE = {MAPE:.2%}')
     plt.xlabel('Quarter')
     plt.ylabel('Pendapatan')
+    plt.xticks(rotation=90)
     plt.grid(True)
     plt.legend()
     
@@ -266,8 +280,9 @@ def forecast_summary():
 
         #forecasted data table
         forecast = fit.forecast(steps=20)
-        quarters = range(1, len(forecast) + 1)
-        df_forecast = pd.DataFrame({'Quarter': quarters, 'Peramalan': forecast})
+        last_quarter = pd.Period(df['Quarter'].max(), freq='Q')
+        next_quarters = pd.period_range(start=last_quarter + 1, periods=20, freq='Q').astype(str)
+        df_forecast = pd.DataFrame({'Quarter': next_quarters, 'Peramalan': forecast})
 
         #retrieve statsmodels.summary() data
         fit.summary()
