@@ -8,7 +8,6 @@ import statsmodels.api as sm
 import pandas as pd
 from sklearn.metrics import mean_absolute_percentage_error
 from io import BytesIO
-import numpy as np
 
 #initiate app
 app = Flask(__name__)
@@ -217,6 +216,8 @@ def forecast():
     df['Quarter']= pd.to_datetime(df['Quarter'])
     df = df.sort_values('Quarter')
     df['Quarter'] = df['Quarter'].dt.to_period('Q')
+    next_quarters = pd.PeriodIndex(df['Quarter'], freq='Q-DEC') + 20
+    next_quarters = next_quarters.astype(str)
     df['Quarter'] = df['Quarter'].astype(str)
 
     # Apply Exponential Smoothing for forecasting
@@ -227,8 +228,6 @@ def forecast():
     #MAPE
     MAPE = mean_absolute_percentage_error(df.Pendapatan, forecast)
 
-    last_quarter = pd.Period(df['Quarter'].max(), freq='Q')
-    next_quarters = pd.period_range(start=last_quarter + 1, periods=20, freq='Q').astype(str)
 
     additive = {'Quarter': next_quarters, 'Peramalan': forecast}
 
@@ -238,7 +237,7 @@ def forecast():
 
     # Plot the original data and forecast
     plt.figure(figsize=(12, 9))
-    plt.margins(x=0.01, y=0.1)
+    plt.margins(x=0.01, y=0.05)
     x = df['Quarter']
     y1 = df['Pendapatan']
     y2 = df['Peramalan']
@@ -269,10 +268,12 @@ def forecast_summary():
     
     else:
         # Convert data to a Pandas DataFrame
+        pd.options.display.float_format = '{:.2f}'.format
         df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Quarter', 'Pendapatan'])
         df['Quarter']= pd.to_datetime(df['Quarter'])
         df = df.sort_values('Quarter')
         df['Quarter'] = df['Quarter'].dt.to_period('Q')
+        next_quarters = pd.PeriodIndex(df['Quarter'], freq='Q-DEC') + 20
 
         # Apply Exponential Smoothing for forecasting
         model = sm.tsa.ExponentialSmoothing(df['Pendapatan'], trend='add', seasonal='add', seasonal_periods=4)
@@ -280,8 +281,6 @@ def forecast_summary():
 
         #forecasted data table
         forecast = fit.forecast(steps=20)
-        last_quarter = pd.Period(df['Quarter'].max(), freq='Q')
-        next_quarters = pd.period_range(start=last_quarter + 1, periods=20, freq='Q').astype(str)
         df_forecast = pd.DataFrame({'Quarter': next_quarters, 'Peramalan': forecast})
 
         #retrieve statsmodels.summary() data
