@@ -25,6 +25,7 @@
     <div class="jumbotron text-center">
         <h2>Ubah username</h2>
         <p>Silahkan ubah username akun anda, {{account}}</p>
+        <h4>Username baru hanya boleh terdiri dari kombinasi huruf dan angka, maksimal 25 karakter.</h4>
         <br>
         <form action="{{ url_for('change_username') }}" method="post">
             <input type="text" name="current_username" value='{{ account }}' id="current_username" required readonly>
