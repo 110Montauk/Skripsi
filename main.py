@@ -212,51 +212,69 @@ def delete(id_pendapatan):
 #forecasting and plotting
 @app.route('/forecast')
 def forecast():
+    # Ambil data dari tabel
     data = tabel_pendapatan.query.order_by(tabel_pendapatan.periode.asc()).all()
 
-    # Convert data to a Pandas DataFrame
+    # Konversi data ke Pandas DataFrame
     df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Quarter', 'Pendapatan'])
-    df['Quarter']= pd.to_datetime(df['Quarter'])
+    df['Quarter'] = pd.to_datetime(df['Quarter'])
     df = df.sort_values('Quarter')
-    df['Quarter'] = df['Quarter'].dt.to_period('Q')
-    next_quarters = pd.PeriodIndex(df['Quarter'], freq='Q-DEC') + 20
-    next_quarters = next_quarters.astype(str)
-    df['Quarter'] = df['Quarter'].astype(str)
+    df['Quarter'] = df['Quarter'].dt.to_period('Q')  # Konversi ke Period
 
-    # Apply Exponential Smoothing for forecasting
-    model = sm.tsa.ExponentialSmoothing(df['Pendapatan'], trend='add', seasonal='add', seasonal_periods=4).fit()
-    forecast = model.forecast(20)  # Forecast the next 20 steps
-    
-    #MAPE
-    MAPE = mean_absolute_percentage_error(df.Pendapatan, forecast)
+    # Pisahkan data menjadi train dan test
+    train_size = int(len(df) * 0.8)
+    train, test = df.iloc[:train_size], df.iloc[train_size:]
 
-    additive = {'Quarter': next_quarters, 'Peramalan': forecast}
+    # Latih model dengan data training
+    model = sm.tsa.ExponentialSmoothing(
+        train['Pendapatan'], 
+        trend='add', 
+        seasonal='add', 
+        seasonal_periods=4
+    ).fit()
 
-    df_additive = pd.DataFrame(additive)
+    # Forecast data test
+    forecast = model.forecast(len(test))
 
-    df = pd.concat([df, df_additive], ignore_index=True)
+    # Hitung MAPE
+    if (test['Pendapatan'] == 0).any():
+        raise ValueError("Test data contains zero values, which will cause division error in MAPE.")
+    MAPE = mean_absolute_percentage_error(test['Pendapatan'], forecast) * 100
 
-    # Plot the original data and forecast
+    # Forecast untuk periode mendatang (misal 20 langkah ke depan)
+    next_periods = 20
+    last_period = test['Quarter'].iloc[-1]
+    future_quarters = pd.period_range(start=last_period + 1, periods=next_periods, freq='Q')
+    future_forecast = model.forecast(next_periods)
+
+    # Buat DataFrame untuk data forecast masa depan
+    forecast_data = {'Quarter': future_quarters.astype(str), 'Peramalan': future_forecast}
+    df_forecast = pd.DataFrame(forecast_data)
+
+    # Gabungkan data asli dengan data forecast masa depan
+    df['Quarter'] = df['Quarter'].astype(str)  # Konversi ke string untuk visualisasi
+    df['Peramalan'] = None
+    df = pd.concat([df, df_forecast], ignore_index=True)
+
+    # Plot data asli dan forecast
     plt.figure(figsize=(12, 9))
     plt.margins(x=0.01, y=0.05)
-    x = df['Quarter']
-    y1 = df['Pendapatan']
-    y2 = df['Peramalan']
-    plt.plot(x, y1, label='Penjualan', marker='o')
-    plt.plot(x, y2, label='Peramalan', marker='o', linestyle='--')
-    plt.title(f'Peramalan pendapatan Adobe Inc. menggunakan Metode Additive, MAPE = {MAPE:.2%}')
+    plt.plot(df['Quarter'], df['Pendapatan'], label='Pendapatan Asli', marker='o')
+    plt.plot(df['Quarter'], df['Peramalan'], label='Peramalan', linestyle='--', marker='o')
+    plt.title(f'Peramalan Pendapatan menggunakan Additive Model, MAPE = {MAPE:.2f}%')
     plt.xlabel('Quarter')
     plt.ylabel('Pendapatan')
     plt.xticks(rotation=90)
     plt.grid(True)
     plt.legend()
-    
-    #retrieve the plot to display
+
+    # Simpan plot sebagai gambar
     img = BytesIO()
     plt.savefig(img, format='png')
     img.seek(0)
     plt.close()
     return Response(img, mimetype='image/png')
+
 
 #show forecast plot and summaries
 @app.route('/forecast_summary')
@@ -270,17 +288,27 @@ def forecast_summary():
     else:
         # Convert data to a Pandas DataFrame
         pd.options.display.float_format = '{:.2f}'.format
+        # Konversi data ke Pandas DataFrame
         df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Quarter', 'Pendapatan'])
-        df['Quarter']= pd.to_datetime(df['Quarter'])
+        df['Quarter'] = pd.to_datetime(df['Quarter'])
         df = df.sort_values('Quarter')
-        df['Quarter'] = df['Quarter'].dt.to_period('Q')
+        df['Quarter'] = df['Quarter'].dt.to_period('Q')  # Konversi ke Period
         next_quarters = pd.PeriodIndex(df['Quarter'], freq='Q-DEC') + 20
 
-        # Apply Exponential Smoothing for forecasting
-        model = sm.tsa.ExponentialSmoothing(df['Pendapatan'], trend='add', seasonal='add', seasonal_periods=4).fit()
-        
-        #forecasted data table
-        forecast = model.forecast(steps=20)
+        # Pisahkan data menjadi train dan test
+        train_size = int(len(df) * 0.8)
+        train, test = df.iloc[:train_size], df.iloc[train_size:]
+
+        # Latih model dengan data training
+        model = sm.tsa.ExponentialSmoothing(
+            train['Pendapatan'], 
+            trend='add', 
+            seasonal='add', 
+            seasonal_periods=4
+        ).fit()
+
+        # Forecast data test
+        forecast = model.forecast(20)
         df_forecast = pd.DataFrame({'Quarter (Peramalan)': next_quarters, 'Peramalan': forecast})
 
         #retrieve statsmodels.summary() data
