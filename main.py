@@ -212,20 +212,20 @@ def delete(id_pendapatan):
 #forecasting and plotting
 @app.route('/forecast')
 def forecast():
-    # Ambil data dari tabel
+    #retrieve data
     data = tabel_pendapatan.query.order_by(tabel_pendapatan.periode.asc()).all()
 
-    # Konversi data ke Pandas DataFrame
+    #convert to pandas dataframe
     df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Quarter', 'Pendapatan'])
     df['Quarter'] = pd.to_datetime(df['Quarter'])
     df = df.sort_values('Quarter')
     df['Quarter'] = df['Quarter'].dt.to_period('Q')  # Konversi ke Period
 
-    # Pisahkan data menjadi train dan test
+    #train and test data
     train_size = int(len(df) * 0.8)
     train, test = df.iloc[:train_size], df.iloc[train_size:]
 
-    # Latih model dengan data training
+    #train model
     model = sm.tsa.ExponentialSmoothing(
         train['Pendapatan'], 
         trend='add', 
@@ -233,30 +233,30 @@ def forecast():
         seasonal_periods=4
     ).fit()
 
-    # Forecast data test
+    #forecast test data
     forecast = model.forecast(len(test))
 
-    # Hitung MAPE
+    #MAPE calculation
     if (test['Pendapatan'] == 0).any():
         raise ValueError("Test data contains zero values, which will cause division error in MAPE.")
     MAPE = mean_absolute_percentage_error(test['Pendapatan'], forecast) * 100
 
-    # Forecast untuk periode mendatang (misal 20 langkah ke depan)
+    #forecast for the future period
     next_periods = 20
     last_period = test['Quarter'].iloc[-1]
     future_quarters = pd.period_range(start=last_period + 1, periods=next_periods, freq='Q')
     future_forecast = model.forecast(next_periods)
 
-    # Buat DataFrame untuk data forecast masa depan
+    #dataframe for forecasted values
     forecast_data = {'Quarter': future_quarters.astype(str), 'Peramalan': future_forecast}
     df_forecast = pd.DataFrame(forecast_data)
 
-    # Gabungkan data asli dengan data forecast masa depan
-    df['Quarter'] = df['Quarter'].astype(str)  # Konversi ke string untuk visualisasi
+    #combine original data with forecasted value
+    df['Quarter'] = df['Quarter'].astype(str)  # convert to string
     df['Peramalan'] = None
     df = pd.concat([df, df_forecast], ignore_index=True)
 
-    # Plot data asli dan forecast
+    #plotting
     plt.figure(figsize=(12, 9))
     plt.margins(x=0.01, y=0.05)
     plt.plot(df['Quarter'], df['Pendapatan'], label='Pendapatan Asli', marker='o')
@@ -268,7 +268,7 @@ def forecast():
     plt.grid(True)
     plt.legend()
 
-    # Simpan plot sebagai gambar
+    #save image as plot
     img = BytesIO()
     plt.savefig(img, format='png')
     img.seek(0)
@@ -279,27 +279,28 @@ def forecast():
 #show forecast plot and summaries
 @app.route('/forecast_summary')
 def forecast_summary():
+    #retrieve data
     data = tabel_pendapatan.query.all()
 
+    #error if database has <20 query
     if len(data) < 20:
         flash('Hanya bisa melakukan peramalan jika ada 20 data penjualan di database!')
         return redirect(url_for('view'))
     
     else:
-        # Convert data to a Pandas DataFrame
+        #convert to pandas dataframe
         pd.options.display.float_format = '{:.2f}'.format
-        # Konversi data ke Pandas DataFrame
         df = pd.DataFrame([(d.periode, d.pendapatan) for d in data], columns=['Quarter', 'Pendapatan'])
         df['Quarter'] = pd.to_datetime(df['Quarter'])
         df = df.sort_values('Quarter')
         df['Quarter'] = df['Quarter'].dt.to_period('Q')  # Konversi ke Period
         next_quarters = pd.PeriodIndex(df['Quarter'], freq='Q-DEC') + 20
 
-        # Pisahkan data menjadi train dan test
+        #train data
         train_size = int(len(df) * 0.8)
-        train, test = df.iloc[:train_size], df.iloc[train_size:]
+        train = df.iloc[:train_size]
 
-        # Latih model dengan data training
+        #train model
         model = sm.tsa.ExponentialSmoothing(
             train['Pendapatan'], 
             trend='add', 
@@ -307,7 +308,7 @@ def forecast_summary():
             seasonal_periods=4
         ).fit()
 
-        # Forecast data test
+        #forecast data
         forecast = model.forecast(20)
         df_forecast = pd.DataFrame({'Quarter (Peramalan)': next_quarters, 'Peramalan': forecast})
 
