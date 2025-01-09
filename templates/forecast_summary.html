@@ -1,0 +1,39 @@
+<br>{% include "header.html" %}
+
+<link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+<style>
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+</style>
+{% block body %}
+
+<div class="container text-center">
+    <h2>{{ header }}, hasil peramalan Anda adalah sebagai berikut:</h2>
+    <img class="container text-center" src="{{ url_for('forecast') }}" alt="Plot Image">
+    <h4>Data Penjualan:</h4>
+    {{ df|safe }}
+    <br>
+    <h4>Data Hasil Peramalan:</h4>
+    {{ df_forecast|safe }}
+    <br>
+    <h4>Ringkasan Model:</h4>
+    {{ summary|safe }}
+    <br><br>
+    <a href="/view" class="btn btn-primary">Kembali ke Menu Kelola Data</a>
+    <br><br><br>
+</div>
+{% endblock %}
+
+
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+
+<script type="text/javascript" src="{{url_for('static', filename = 'js/bootstrap.min.js')}}"></script>
