@@ -32,8 +32,8 @@ class tabel_pendapatan(db.Model):
 class tabel_admin(db.Model, UserMixin):
     __tablename__ = 'tabel_admin'
     id_admin = db.Column(db.Integer, primary_key = True, autoincrement = True)
-    username = db.Column(db.Text(45), unique=True, nullable = False)
-    password = db.Column(db.Text(45), nullable = False)
+    username = db.Column(db.VARCHAR(45), unique=True, nullable = False)
+    password = db.Column(db.VARCHAR(45), nullable = False)
     def get_id(self):
            return (self.id_admin)
 
