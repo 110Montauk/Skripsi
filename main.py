@@ -14,7 +14,7 @@ app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
 # Configure MySQL database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:"[033g5ZZmWa!Ad"@localhost/adobe_database'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:'[033g5ZZmWa!Ad@localhost/adobe_database'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
