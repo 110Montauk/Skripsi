@@ -325,4 +325,4 @@ def forecast_summary():
             return render_template('forecast_summary.html', summary=summary_html, header = 'Guest', df=df.to_html(classes='table table-striped', index=False), df_forecast=df_forecast.to_html(classes='table table-striped', index=False))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run
