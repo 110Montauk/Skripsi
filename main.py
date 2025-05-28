@@ -310,7 +310,7 @@ def forecast_summary():
             trend='add', 
             seasonal='add', 
             seasonal_periods=4
-        ).fit()
+        )
 
         #forecast data
         forecast = model.forecast(20)
