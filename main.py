@@ -235,7 +235,7 @@ def forecast():
         trend='add', 
         seasonal='add', 
         seasonal_periods=4
-    ).fit()
+    )
 
     #forecast test data
     forecast = model.forecast(len(test))
