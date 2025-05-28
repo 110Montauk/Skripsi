@@ -231,6 +231,7 @@ def forecast():
     #train model
     model = sm.tsa.ExponentialSmoothing(
         train['Pendapatan'], 
+        initial_level = 0.1, initial_trend = 0.1, initial_seasonal = 0.1,
         trend='add', 
         seasonal='add', 
         seasonal_periods=4
